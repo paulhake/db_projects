@@ -1,0 +1,131 @@
+#correlated  and join: first and last hires by department and include country (joined from regions table)
+SELECT first_name, department, hire_date, country
+FROM employees e1
+INNER JOIN regions r 
+ON e1.region_id = r.region_id
+WHERE hire_date = (SELECT MIN(hire_date)
+					FROM employees e2
+					WHERE e2.department = e1.department)
+	OR hire_date = (SELECT MAX(hire_date)
+					FROM employees e2
+					WHERE e2.department = e1.department)
+
+
+
+LEFT and RIGHT JOIN same as OUTER
+
+
+
+#correlated query to select highest and lowest paid employees with name and flag. 
+NOTE cannot use regular query as need first_name, without that requirement regular group by would work.
+My solution first, book solution second - Book cleaner and puts sub query in FROM clause???
+
+SELECT department, first_name, salary,
+(CASE WHEN salary = (SELECT MAX(salary)
+			   FROM employees e1
+				WHERE e2.department = e1.department
+			   ) THEN 'Highest' ELSE 'Lowest' END) AS dept_salary
+
+
+FROM employees e2
+
+WHERE salary = (SELECT MAX(salary)
+			   FROM employees e1
+				WHERE e2.department = e1.department
+			   )
+OR salary = (SELECT MIN(salary)
+			   FROM employees e1
+				WHERE e2.department = e1.department
+			   )
+ORDER BY department,dept_salary
+
+BOOK SOL: 
+SELECT department,first_name,salary,
+CASE
+	WHEN salary = max_salary THEN 'max salary' ELSE 'min_salary' END as depart_salary
+FROM (
+	SELECT department, first_name,salary,
+	(SELECT MAX(salary) FROM employees e1
+	WHERE e1.department = e2.department) as max_salary,
+	(SELECT MIN(salary) FROM employees e1
+	WHERE e1.department = e2.department) as min_salary
+	FROM employees e2
+	) a
+	
+WHERE salary IN (max_salary,min_salary)
+
+
+
+
+
+#correlated sub queries
+Employees who make more than average departmental salary:
+SELECT first_name,salary
+FROM employees e1
+WHERE salary > (SELECT round(AVG(salary))
+			   FROM employees e2
+				WHERE e1.department = e2.department
+			   )
+
+#correlated include rows with avg departmental salary for reference:
+SELECT first_name,department, salary,
+(SELECT round(AVG(salary))
+			   FROM employees e2
+				WHERE e1.department = e2.department
+			   ) as avg_sal
+FROM employees e1
+WHERE salary > (SELECT round(AVG(salary))
+			   FROM employees e2
+				WHERE e1.department = e2.department
+			   )
+ORDER BY department
+
+#select highest paid salary for each department — note without e2.dep = e1.dep this would return just max row from entire table
+
+SELECT department, first_name, salary
+
+FROM employees e2
+
+WHERE salary = (SELECT MAX(salary)
+			   FROM employees e1
+				WHERE e2.department = e1.department
+			   )
+
+NOTE Q above is same as this EASIER:
+SELECT department, MAX(salary)
+FROM departments
+GROUP BY department
+
+
+
+SELECT first_name,
+(CASE WHEN region_id = 1 THEN (SELECT country FROM regions WHERE region_id = 1) END),
+(CASE WHEN region_id IN (4,5) THEN 'Asia' ELSE NULL END),
+(CASE WHEN region_id IN (6,7) THEN 'Canada' ELSE NULL END)
+FROM employees
+
+#usbenefits
+
+Sum of cats as columns:
+SELECT
+SUM(CASE WHEN salary > 100000 THEN 1 ELSE 0 END) AS underpaid,
+SUM(CASE WHEN salary > 100000 AND salary < 160000 THEN 1 ELSE 0 END) AS normal,
+SUM(CASE WHEN salary > 160000 THEN 1 ELSE 0 END) AS executive
+FROM employees
+
+
+SELECT 
+	--created_at,
+	SUM((CASE WHEN event_name = 'post' THEN 1 ELSE 0 END))*100/
+			SUM((CASE WHEN event_name = 'enter' THEN 1 ELSE 0 END)) AS post_ratio,
+	SUM((CASE WHEN event_name = 'cancel' THEN 1 ELSE 0 END))*100/
+			SUM((CASE WHEN event_name = 'enter' THEN 1 ELSE 0 END)) AS cancels_ratio,
+	EXTRACT('dow' FROM created_at) AS dow
+	
+	
+	FROM interviews.post_events
+	GROUP BY dow
+	ORDER by post_ratio DESC
+	
+	--check
+
